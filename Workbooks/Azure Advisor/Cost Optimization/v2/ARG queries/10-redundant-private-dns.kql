@@ -1,0 +1,16 @@
+// Redundant Private DNS Zones
+// Private DNS zones with duplicate names within the same subscription — potential consolidation candidates
+resources
+| where type =~ "microsoft.network/privatednszones"
+| extend zoneName = tostring(name)
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| summarize
+    zoneCount = count(),
+    zoneIds = make_list(id),
+    resourceGroups = make_list(resourceGroup)
+    by zoneName, subscriptionId
+| where zoneCount > 1
+| project zoneName, subscriptionId, zoneCount, resourceGroups
+| order by zoneCount desc

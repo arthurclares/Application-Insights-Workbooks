@@ -1,0 +1,17 @@
+// Idle Front Door / CDN Profiles
+// Azure Front Door profiles with no AFD endpoints configured
+resources
+| where type =~ "microsoft.cdn/profiles"
+| extend skuName = tostring(sku.name)
+| project profileId = tolower(id), profileName = name, skuName, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.cdn/profiles/afdendpoints"
+    | extend profileId = tolower(tostring(split(id, "/afdEndpoints")[0]))
+    | project profileId, _endpointExists = 1
+) on profileId
+| where isnull(_endpointExists)
+| project profileId, profileName, skuName, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.profileId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

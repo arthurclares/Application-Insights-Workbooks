@@ -1,0 +1,27 @@
+// Orphaned Custom VM Images
+// Custom images not referenced by any VM or VMSS — candidates for deletion
+resources
+| where type =~ "microsoft.compute/images"
+| project imageId = tolower(id), imageName = name, location, resourceGroup, subscriptionId,
+    timeCreated = tostring(properties.provisioningState)
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.compute/virtualmachines"
+    | extend imageRef = tolower(tostring(properties.storageProfile.imageReference.id))
+    | where isnotempty(imageRef)
+    | project imageId = imageRef, _vmRef = 1
+) on imageId
+| where isnull(_vmRef)
+| project-away _vmRef
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.compute/virtualmachinescalesets"
+    | extend imageRef = tolower(tostring(properties.virtualMachineProfile.storageProfile.imageReference.id))
+    | where isnotempty(imageRef)
+    | project imageId = imageRef, _vmssRef = 1
+) on imageId
+| where isnull(_vmssRef)
+| project imageId, imageName, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.imageId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

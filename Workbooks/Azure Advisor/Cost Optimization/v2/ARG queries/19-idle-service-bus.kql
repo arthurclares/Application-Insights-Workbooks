@@ -1,0 +1,30 @@
+// Idle Premium Service Bus Namespaces
+// Premium-tier Service Bus namespaces with zero queues and zero topics
+resources
+| where type =~ "microsoft.servicebus/namespaces"
+| extend
+    skuName = tostring(sku.name),
+    skuTier = tostring(sku.tier),
+    skuCapacity = toint(sku.capacity),
+    provisioningState = tostring(properties.provisioningState),
+    status = tostring(properties.status)
+| where skuTier =~ "Premium"
+| project sbId = tolower(id), sbName = name, skuName, skuTier, skuCapacity, status, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.servicebus/namespaces/queues"
+    | extend sbId = tolower(tostring(split(id, "/queues/")[0]))
+    | summarize queueCount = count() by sbId
+) on sbId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.servicebus/namespaces/topics"
+    | extend sbId = tolower(tostring(split(id, "/topics/")[0]))
+    | summarize topicCount = count() by sbId
+) on sbId
+| extend queueCount = coalesce(queueCount, 0), topicCount = coalesce(topicCount, 0)
+| where queueCount == 0 and topicCount == 0
+| project sbId, sbName, skuName, skuTier, skuCapacity, queueCount, topicCount, status, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.sbId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

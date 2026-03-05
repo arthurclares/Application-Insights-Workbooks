@@ -1,0 +1,17 @@
+// Unused Container Apps Environments
+// Managed environments with zero container apps — paying infrastructure cost for nothing
+resources
+| where type =~ "microsoft.app/managedenvironments"
+| project envId = tolower(id), envName = name, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.app/containerapps"
+    | extend envId = tolower(tostring(properties.managedEnvironmentId))
+    | summarize appCount = count() by envId
+) on envId
+| extend appCount = coalesce(appCount, 0)
+| where appCount == 0
+| project envId, envName, appCount, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.envId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

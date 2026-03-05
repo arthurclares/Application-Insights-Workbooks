@@ -1,0 +1,20 @@
+// Duplicate Private Endpoints
+// Multiple PEs from the same VNet connecting to the same target resource — potential consolidation opportunity
+resources
+| where type =~ "microsoft.network/privateendpoints"
+| mv-expand plsc = properties.privateLinkServiceConnections
+| extend
+    targetResource = tolower(tostring(plsc.properties.privateLinkServiceId)),
+    subnetId = tolower(tostring(properties.subnet.id)),
+    vnetId = tolower(tostring(split(tostring(properties.subnet.id), "/subnets/")[0]))
+| summarize
+    peCount = count(),
+    peIds = make_list(id),
+    peNames = make_list(name)
+    by targetResource, vnetId
+| where peCount > 1
+| project targetResource, vnetId, peCount, peNames
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.targetResource == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by peCount desc

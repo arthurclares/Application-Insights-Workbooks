@@ -1,0 +1,24 @@
+// Spot VM Opportunity Analysis
+// Running non-Spot VMs in dev/test/staging environments (by RG name or tags) — candidates for Spot pricing
+resources
+| where type =~ "microsoft.compute/virtualmachines"
+| extend
+    vmSize = tostring(properties.hardwareProfile.vmSize),
+    priority = tostring(properties.priority),
+    powerState = tostring(properties.extended.instanceView.powerState.displayStatus),
+    tagStr = tolower(tostring(tags))
+| where priority != "Spot" and priority != "Low"
+| where powerState == "VM running"
+| where resourceGroup matches regex "(?i)(dev|test|stag|sandbox|lab|poc|demo|tmp|temp)"
+    or tagStr contains "dev"
+    or tagStr contains "test"
+    or tagStr contains "staging"
+    or tagStr contains "sandbox"
+    or tagStr contains "non-production"
+    or tagStr contains "nonproduction"
+    or tagStr contains "spot-candidate"
+| project id, name, vmSize, priority, resourceGroup, location, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by vmSize asc

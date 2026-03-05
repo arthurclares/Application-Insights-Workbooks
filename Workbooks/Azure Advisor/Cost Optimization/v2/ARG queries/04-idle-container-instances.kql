@@ -1,0 +1,18 @@
+// Idle Container Instances
+// Container groups in Succeeded/Failed/Stopped state or with non-running instances
+resources
+| where type =~ "microsoft.containerinstance/containergroups"
+| extend
+    provisioningState = tostring(properties.provisioningState),
+    osType = tostring(properties.osType),
+    containerCount = array_length(properties.containers),
+    restartPolicy = tostring(properties.restartPolicy),
+    cpu = tostring(properties.containers[0].properties.resources.requests.cpu),
+    memGB = tostring(properties.containers[0].properties.resources.requests.memoryInGB)
+| where provisioningState in ("Succeeded", "Failed", "Stopped")
+| extend instanceState = tostring(properties.instanceView.state)
+| where instanceState != "Running" or provisioningState != "Succeeded"
+| project id, name, provisioningState, instanceState, osType, containerCount, restartPolicy, cpu, memGB, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

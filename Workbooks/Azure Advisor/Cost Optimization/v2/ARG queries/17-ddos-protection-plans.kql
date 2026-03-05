@@ -1,0 +1,22 @@
+// DDoS Protection Plans — Low Utilization
+// DDoS Protection Plans protecting fewer than 10 public IPs — at ~$2,944/month, consider consolidation
+resources
+| where type =~ "microsoft.network/ddosprotectionplans"
+| extend
+    associatedVnets = array_length(properties.virtualNetworks),
+    provisioningState = tostring(properties.provisioningState)
+| project planId = id, planName = name, associatedVnets, provisioningState, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.network/publicipaddresses"
+    | where isnotempty(properties.ddosSettings.ddosProtectionPlan.id)
+    | extend planId = tostring(properties.ddosSettings.ddosProtectionPlan.id)
+    | summarize protectedPIPs = count() by planId
+) on planId
+| extend protectedPIPs = coalesce(protectedPIPs, 0)
+| where protectedPIPs < 10
+| project planId, planName, associatedVnets, protectedPIPs, provisioningState, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.planId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by protectedPIPs asc

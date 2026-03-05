@@ -1,0 +1,19 @@
+// Idle Traffic Manager Profiles
+// Traffic Manager profiles with zero endpoints or no enabled endpoints
+resources
+| where type =~ "microsoft.network/trafficmanagerprofiles"
+| extend
+    endpointCount = array_length(properties.endpoints),
+    profileStatus = tostring(properties.profileStatus),
+    trafficRoutingMethod = tostring(properties.trafficRoutingMethod)
+| mv-expand endpoint = properties.endpoints
+| extend endpointStatus = tostring(endpoint.properties.endpointStatus)
+| summarize
+    totalEndpoints = count(),
+    enabledEndpoints = countif(endpointStatus == "Enabled")
+    by id, name, profileStatus, trafficRoutingMethod, resourceGroup, subscriptionId
+| where totalEndpoints == 0 or enabledEndpoints == 0
+| project id, name, profileStatus, trafficRoutingMethod, totalEndpoints, enabledEndpoints, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

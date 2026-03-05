@@ -1,0 +1,20 @@
+// Dev/Test Subscriptions with Production-Grade VM SKUs
+// VMs in Dev/Test or MSDN subscriptions running non-burstable, enterprise-class SKUs that could be downsized
+ResourceContainers
+| where type =~ "microsoft.resources/subscriptions"
+| where tostring(properties.subscriptionPolicies.quotaId) contains "DevTest" 
+    or tostring(properties.subscriptionPolicies.quotaId) contains "MSDN"
+| project devTestSubId = subscriptionId, subName = name
+| join kind=inner (
+    resources
+    | where type =~ "microsoft.compute/virtualmachines"
+    | extend vmSize = tostring(properties.hardwareProfile.vmSize)
+    | where vmSize !startswith "Standard_B"  // Exclude burstable (dev-appropriate)
+    | where vmSize !contains "s_v" or vmSize contains "Standard_E" or vmSize contains "Standard_M" or vmSize contains "Standard_L"
+    | project id, name, vmSize, location, resourceGroup, subscriptionId
+) on $left.devTestSubId == $right.subscriptionId
+| project id, name, vmSize, location, resourceGroup, subscriptionId, subName
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by vmSize asc

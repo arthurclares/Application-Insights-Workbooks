@@ -1,0 +1,19 @@
+// Synapse Idle Dedicated SQL Pools
+// Dedicated SQL pools in Online state — consider pausing when not actively queried
+// NOTE: Full idle detection requires metrics data (not available in ARG). This query surfaces candidate resources for review.
+resources
+| where type =~ "microsoft.synapse/workspaces/sqlpools"
+| extend
+    poolStatus = tostring(properties.status),
+    skuName = tostring(sku.name),
+    skuCapacity = toint(sku.capacity),
+    collation = tostring(properties.collation),
+    maxSizeBytes = tolong(properties.maxSizeBytes),
+    maxSizeGB = tolong(properties.maxSizeBytes) / 1073741824,
+    workspaceName = tostring(split(id, "/")[8])
+| where poolStatus =~ "Online"
+| project id, name, workspaceName, poolStatus, skuName, skuCapacity, maxSizeGB, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by skuCapacity desc

@@ -1,0 +1,22 @@
+// Advisor Reliability Recommendations — Catch-All by Impacted Field
+// Aggregates all Reliability (High Availability) recommendations grouped by impacted resource type
+advisorresources
+| where type == "microsoft.advisor/recommendations"
+| where tostring(properties.category) == "HighAvailability"
+| extend
+    impactedField = tostring(properties.impactedField),
+    impact = tostring(properties.impact),
+    shortDescription = tostring(properties.shortDescription.solution),
+    resourceId = tostring(properties.resourceMetadata.resourceId)
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.resourceId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| summarize
+    recommendationCount = count(),
+    highImpact = countif(impact == "High"),
+    mediumImpact = countif(impact == "Medium"),
+    lowImpact = countif(impact == "Low"),
+    sampleDescription = take_any(shortDescription)
+    by impactedField
+| order by recommendationCount desc
+| project impactedField, recommendationCount, highImpact, mediumImpact, lowImpact, sampleDescription

@@ -1,0 +1,24 @@
+// Idle API Management Instances
+// APIM instances with zero custom APIs (excluding the built-in echo-api)
+resources
+| where type =~ "microsoft.apimanagement/service"
+| extend
+    skuName = tostring(sku.name),
+    skuCapacity = toint(sku.capacity),
+    provisioningState = tostring(properties.provisioningState),
+    gatewayUrl = tostring(properties.gatewayUrl),
+    publicIPAddresses = properties.publicIPAddresses
+| project apimId = tolower(id), apimName = name, skuName, skuCapacity, provisioningState, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.apimanagement/service/apis"
+    | where name != "echo-api"  // Exclude the default built-in echo API
+    | extend apimId = tolower(tostring(split(id, "/apis/")[0]))
+    | summarize apiCount = count() by apimId
+) on apimId
+| extend apiCount = coalesce(apiCount, 0)
+| where apiCount == 0
+| project apimId, apimName, skuName, skuCapacity, apiCount, provisioningState, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.apimId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

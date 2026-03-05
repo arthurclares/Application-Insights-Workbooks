@@ -1,0 +1,15 @@
+// Pending or Rejected Private Endpoints
+// Private Endpoints in non-Approved states — may indicate failed or abandoned connection requests
+resources
+| where type =~ "microsoft.network/privateendpoints"
+| mv-expand plsc = properties.privateLinkServiceConnections
+| extend
+    connectionStatus = tostring(plsc.properties.privateLinkServiceConnectionState.status),
+    targetResource = tostring(plsc.properties.privateLinkServiceId),
+    groupIds = tostring(plsc.properties.groupIds)
+| where connectionStatus != "Approved"
+| project id, name, connectionStatus, targetResource, groupIds, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by connectionStatus asc

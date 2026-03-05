@@ -1,0 +1,25 @@
+// App Service Plans — Multi-Worker Without Autoscale
+// Non-Free/Shared App Service Plans with multiple workers but no autoscale settings configured
+resources
+| where type =~ "microsoft.web/serverfarms"
+| where sku.tier !~ "Free" and sku.tier !~ "Shared"
+| extend
+    skuName = tostring(sku.name),
+    skuTier = tostring(sku.tier),
+    workers = toint(properties.numberOfWorkers),
+    maxWorkers = toint(properties.maximumNumberOfWorkers),
+    siteCount = toint(properties.numberOfSites),
+    planId = tolower(id)
+| where workers > 1
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.insights/autoscalesettings"
+    | extend planId = tolower(tostring(properties.targetResourceUri))
+    | project planId, _autoscaleExists = 1
+) on planId
+| where isnull(_autoscaleExists) and siteCount > 0
+| project id, name, skuName, skuTier, workers, maxWorkers, siteCount, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
+| order by workers desc

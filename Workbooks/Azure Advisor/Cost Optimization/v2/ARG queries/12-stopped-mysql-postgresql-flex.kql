@@ -1,0 +1,21 @@
+// Stopped MySQL / PostgreSQL Flexible Servers
+// Flexible servers in Stopped/Disabled state — compute is deallocated but storage charges continue
+resources
+| where type =~ "microsoft.dbformysql/flexibleservers" 
+    or type =~ "microsoft.dbforpostgresql/flexibleservers"
+| extend
+    serverState = tostring(properties.state),
+    skuName = tostring(sku.name),
+    skuTier = tostring(sku.tier),
+    storageGB = toint(properties.storage.storageSizeGB),
+    version = tostring(properties.version),
+    serverType = case(
+        type contains "mysql", "MySQL",
+        type contains "postgresql", "PostgreSQL",
+        "Unknown"
+    )
+| where serverState =~ "Stopped" or serverState =~ "Disabled"
+| project id, name, serverType, serverState, skuName, skuTier, storageGB, version, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

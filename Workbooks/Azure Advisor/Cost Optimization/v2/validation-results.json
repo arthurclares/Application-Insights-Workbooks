@@ -1,0 +1,164 @@
+﻿[
+    {
+        "File":  "01-oversized-vms.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "02-devtest-production-skus.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "03-unused-container-apps-envs.kql",
+        "Status":  "PASS",
+        "Records":  1,
+        "Error":  ""
+    },
+    {
+        "File":  "04-idle-container-instances.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "05-spot-vm-opportunities.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "06-orphaned-vm-images.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "07-idle-frontdoor-cdn.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "08-pending-rejected-pes.kql",
+        "Status":  "PASS",
+        "Records":  1,
+        "Error":  ""
+    },
+    {
+        "File":  "09-duplicate-pes.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "10-redundant-private-dns.kql",
+        "Status":  "PASS",
+        "Records":  1,
+        "Error":  ""
+    },
+    {
+        "File":  "11-idle-traffic-manager.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "12-stopped-mysql-postgresql-flex.kql",
+        "Status":  "PASS",
+        "Records":  2,
+        "Error":  ""
+    },
+    {
+        "File":  "13-mariadb-deprecated.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "14-synapse-idle-sql-pools.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "15-idle-data-factory.kql",
+        "Status":  "PASS",
+        "Records":  4,
+        "Error":  ""
+    },
+    {
+        "File":  "16-idle-ai-services.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "17-ddos-protection-plans.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "18-idle-api-management.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "19-idle-service-bus.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "20-idle-logic-apps.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "21-idle-event-grid.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    },
+    {
+        "File":  "22-advisor-cost-catchall.kql",
+        "Status":  "PASS",
+        "Records":  2,
+        "Error":  ""
+    },
+    {
+        "File":  "22b-advisor-reliability-catchall.kql",
+        "Status":  "PASS",
+        "Records":  20,
+        "Error":  ""
+    },
+    {
+        "File":  "22c-advisor-security-catchall.kql",
+        "Status":  "PASS",
+        "Records":  16,
+        "Error":  ""
+    },
+    {
+        "File":  "22d-advisor-performance-catchall.kql",
+        "Status":  "PASS",
+        "Records":  2,
+        "Error":  ""
+    },
+    {
+        "File":  "22e-advisor-operational-excellence-catchall.kql",
+        "Status":  "PASS",
+        "Records":  3,
+        "Error":  ""
+    },
+    {
+        "File":  "23-app-service-plans-no-autoscale.kql",
+        "Status":  "PASS",
+        "Records":  0,
+        "Error":  ""
+    }
+]

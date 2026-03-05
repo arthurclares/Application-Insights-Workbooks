@@ -1,0 +1,15 @@
+// Idle Logic Apps — Standard Plan
+// Standard Logic Apps (App Service-based) that may be idle — review workflow run activity
+// NOTE: Full idle detection requires metrics/run history data (not available in ARG). This query surfaces Standard Logic Apps for review.
+resources
+| where type =~ "microsoft.web/sites"
+| where kind has "workflowapp"
+| extend
+    appStatus = tostring(properties.state),
+    httpsOnly = tobool(properties.httpsOnly),
+    serverFarmId = tostring(properties.serverFarmId),
+    skuName = tostring(properties.sku.name)
+| project id, name, appStatus, kind, httpsOnly, serverFarmId, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

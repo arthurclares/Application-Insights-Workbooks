@@ -1,0 +1,42 @@
+// Idle Event Grid Topics and Domains
+// Event Grid topics and domains with no event subscriptions
+resources
+| where type =~ "microsoft.eventgrid/topics"
+| extend
+    provisioningState = tostring(properties.provisioningState),
+    publicNetworkAccess = tostring(properties.publicNetworkAccess),
+    inputSchema = tostring(properties.inputSchema),
+    resourceType = "Topic"
+| project resourceId = tolower(id), resourceName = name, resourceType, provisioningState, inputSchema, location, resourceGroup, subscriptionId
+| join kind=leftouter (
+    resources
+    | where type =~ "microsoft.eventgrid/topics/eventsubscriptions"
+        or type =~ "microsoft.eventgrid/eventsubscriptions"
+    | extend topicId = tolower(tostring(split(id, "/eventSubscriptions")[0]))
+    | project resourceId = topicId, _subExists = 1
+) on resourceId
+| where isnull(_subExists)
+| project-away _subExists
+| union (
+    resources
+    | where type =~ "microsoft.eventgrid/domains"
+    | extend
+        provisioningState = tostring(properties.provisioningState),
+        publicNetworkAccess = tostring(properties.publicNetworkAccess),
+        inputSchema = tostring(properties.inputSchema),
+        resourceType = "Domain"
+    | project resourceId = tolower(id), resourceName = name, resourceType, provisioningState, inputSchema, location, resourceGroup, subscriptionId
+    | join kind=leftouter (
+        resources
+        | where type =~ "microsoft.eventgrid/domains/eventsubscriptions"
+            or type =~ "microsoft.eventgrid/eventsubscriptions"
+        | extend domainId = tolower(tostring(split(id, "/eventSubscriptions")[0]))
+        | project resourceId = domainId, _subExists = 1
+    ) on resourceId
+    | where isnull(_subExists)
+    | project-away _subExists
+)
+| project resourceId, resourceName, resourceType, provisioningState, inputSchema, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tolower(tostring(properties.SourceId)) | distinct _sgFilterId) on $left.resourceId == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

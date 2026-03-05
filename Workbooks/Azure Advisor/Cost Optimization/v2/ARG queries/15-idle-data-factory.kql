@@ -1,0 +1,14 @@
+// Idle Data Factory Instances
+// Lists all Data Factory instances — cross-reference with pipeline run activity to identify idle ones
+// NOTE: Full idle detection requires Activity Log or metrics data (not available in ARG). This query surfaces candidate resources for review.
+resources
+| where type =~ "microsoft.datafactory/factories"
+| extend
+    provisioningState = tostring(properties.provisioningState),
+    repoType = tostring(properties.repoConfiguration.type),
+    publicNetworkAccess = tostring(properties.publicNetworkAccess),
+    createTime = tostring(properties.createTime)
+| project id, name, provisioningState, repoType, publicNetworkAccess, createTime, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId

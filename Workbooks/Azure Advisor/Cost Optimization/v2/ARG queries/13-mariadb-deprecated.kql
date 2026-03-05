@@ -1,0 +1,15 @@
+// Deprecated MariaDB Instances
+// Azure Database for MariaDB is deprecated — these should be migrated to MySQL Flexible Server
+resources
+| where type =~ "microsoft.dbformariadb/servers"
+| extend
+    serverState = tostring(properties.userVisibleState),
+    skuName = tostring(sku.name),
+    skuTier = tostring(sku.tier),
+    storageGB = toint(properties.storageProfile.storageMB) / 1024,
+    version = tostring(properties.version),
+    sslEnforcement = tostring(properties.sslEnforcement)
+| project id, name, serverState, skuName, skuTier, storageGB, version, sslEnforcement, location, resourceGroup, subscriptionId
+| join kind=leftouter (relationshipresources | where type == 'microsoft.relationships/servicegroupmember' | where properties.TargetId =~ '{ServiceGroup}' | project _sgFilterId = tostring(properties.SourceId) | distinct _sgFilterId) on $left.id == $right._sgFilterId
+| where '{ServiceGroup}' == '' or isnotempty(_sgFilterId)
+| project-away _sgFilterId
